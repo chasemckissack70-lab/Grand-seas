@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Grand Seas 3D — Open World Adventure</title>
+<style>
+:root{--gold:#ffd166;--glass:rgba(6,18,35,.78);--line:rgba(255,255,255,.18)}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#69c8ed;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;touch-action:none}
+#game{position:fixed;inset:0}canvas{display:block}
+.panel{background:var(--glass);border:1px solid var(--line);border-radius:13px;backdrop-filter:blur(9px);box-shadow:0 8px 30px #00101d55}
+#hud{position:fixed;top:12px;left:12px;width:min(320px,calc(100vw - 24px));padding:12px;pointer-events:none}
+.brand{font-weight:1000;letter-spacing:1.5px;font-size:20px;color:var(--gold);text-shadow:0 2px 10px #000}
+.sub{font-size:11px;opacity:.8;letter-spacing:2px;margin-bottom:9px}
+.statline{display:flex;justify-content:space-between;font-size:12px;margin:5px 0 3px}
+.bar{height:8px;background:#172b40;border-radius:99px;overflow:hidden;margin-bottom:7px}.fill{height:100%;width:100%;transition:width .2s}
+#hp{background:linear-gradient(90deg,#e94f64,#ff8b78)}#xp{background:linear-gradient(90deg,#5bd8f3,#5a92ff)}#stam{background:linear-gradient(90deg,#8fe388,#d9ed73)}
+#quest{position:fixed;top:12px;right:12px;width:230px;padding:12px;font-size:12px}
+.paneltitle{font-size:12px;font-weight:900;color:var(--gold);letter-spacing:1px;margin-bottom:7px}
+#questText{line-height:1.45}
+#bottom{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);width:min(540px,calc(100vw - 24px));padding:10px 13px;text-align:center;pointer-events:none}
+#hint{font-size:13px;font-weight:700}#log{font-size:11px;opacity:.82;margin-top:4px}
+#help{position:fixed;bottom:12px;left:12px;padding:10px 12px;font-size:11px;line-height:1.5;max-width:200px}
+#buttons{position:fixed;right:12px;bottom:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:46vw}
+button{color:#fff;background:linear-gradient(180deg,#244d6b,#122b43);border:1px solid #ffffff40;border-radius:12px;padding:10px 12px;font-weight:800;font-size:12px;box-shadow:0 4px 12px #00101d66;touch-action:manipulation}
+button:active{transform:scale(.96);filter:brightness(1.3)}button.gold{background:linear-gradient(180deg,#b97825,#724117);border-color:#ffd16699}
+#modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#00101dcc;padding:18px;z-index:5}
+#modalCard{width:min(560px,100%);max-height:85vh;overflow:auto;padding:20px}
+#modalCard h2{margin:0 0 7px;color:var(--gold)}#modalCard p{line-height:1.55;color:#e3efff}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.item{padding:10px;border:1px solid var(--line);border-radius:10px;background:#ffffff0a;font-size:12px}
+#toast{position:fixed;top:45%;left:50%;transform:translate(-50%,-50%);padding:12px 18px;border-radius:12px;background:#07192be8;border:1px solid #ffd16688;display:none;text-align:center;font-weight:800;z-index:4}
+#mobileControls{position:fixed;left:12px;bottom:100px;display:none;gap:7px;align-items:center}
+.dpad{display:grid;grid-template-columns:42px 42px 42px;grid-template-rows:42px 42px 42px;gap:3px}
+.dpad button{padding:0;font-size:16px;opacity:.84}
+#lookControls{position:fixed;right:12px;bottom:104px;display:none;gap:6px;flex-direction:column}
+#lookControls button{width:46px;height:42px;padding:0}
+@media (pointer:coarse),(max-width:700px){
+ #help{display:none}#quest{top:auto;bottom:210px;right:10px;width:185px;font-size:11px;padding:9px}
+ #hud{width:230px;padding:9px;top:8px;left:8px}.brand{font-size:16px}.sub{font-size:9px}
+ #buttons{bottom:10px;right:8px;max-width:58vw;gap:5px}button{padding:10px;font-size:11px}
+ #bottom{bottom:72px;width:calc(100vw - 18px);padding:7px}#hint{font-size:11px}
+ #mobileControls{display:flex}#lookControls{display:flex}
+}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="hud" class="panel">
+ <div class="brand">GRAND SEAS <span style="color:#fff">3D</span></div><div class="sub">OPEN WORLD PIRATE RPG</div>
+ <div class="statline"><b id="playerName">Rookie Pirate · Lv 1</b><b id="coins">฿ 120</b></div>
+ <div class="statline"><span>HEALTH</span><span id="hpText">100 / 100</span></div><div class="bar"><div class="fill" id="hp"></div></div>
+ <div class="statline"><span>STAMINA</span><span id="stamText">100 / 100</span></div><div class="bar"><div class="fill" id="stam"></div></div>
+ <div class="statline"><span>EXPERIENCE</span><span id="xpText">0 / 100</span></div><div class="bar"><div class="fill" id="xp"></div></div>
+ <div class="statline"><span>BOUNTY</span><b id="bounty">฿ 0</b></div>
+</div>
+<div id="quest" class="panel"><div class="paneltitle">✦ ACTIVE ADVENTURE</div><div id="questText">Talk to Captain Mira at the harbor to begin your journey.</div><hr style="border-color:#ffffff22"><div style="font-size:11px;opacity:.8">🌤 <span id="weather">Clear skies</span><br>🧭 <span id="region">Windward Coast</span></div></div>
+<div id="help" class="panel"><b>KEYBOARD / MOUSE</b><br>WASD — Move · Mouse — Look<br>Space — Jump · Shift — Sprint<br>Click / J — Attack · E — Interact<br>Q — Special skill · M — Map<br>I — Inventory · Esc — Close menu<br><span style="color:var(--gold)">Explore islands, fight bandits, collect treasure.</span></div>
+<div id="bottom" class="panel"><div id="hint">Explore the harbor and find Captain Mira.</div><div id="log">A huge ocean is waiting beyond the shore.</div></div>
+<div id="buttons">
+ <button id="attackBtn">⚔ ATTACK</button><button id="skillBtn" class="gold">✦ SKILL</button><button id="interactBtn">E INTERACT</button><button id="mapBtn">🧭 MAP</button><button id="invBtn">🎒 ITEMS</button>
+</div>
+<div id="mobileControls"><div class="dpad">
+ <div></div><button data-move="forward">▲</button><div></div>
+ <button data-move="left">◀</button><button data-move="back">▼</button><button data-move="right">▶</button>
+ <div></div><button data-move="jump">⤒</button><div></div>
+ </div></div>
+<div id="lookControls"><button id="turnLeft">↶</button><button id="turnRight">↷</button></div>
+<div id="modal"><div id="modalCard" class="panel"><h2 id="modalTitle">Adventure</h2><div id="modalContent"></div><button id="closeModal" class="gold">CLOSE</button></div></div>
+<div id="toast"></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const $=id=>document.getElementById(id);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x73c9ee);scene.fog=new THREE.Fog(0x73c9ee,90,320);
+const camera=new THREE.PerspectiveCamera(67,innerWidth/innerHeight,.1,700);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
+$('game').appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xc8edff,0x52603d,2.0));
+const sun=new THREE.DirectionalLight(0xfff1d0,3.0);sun.position.set(-60,100,35);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-100;sun.shadow.camera.right=100;sun.shadow.camera.top=100;sun.shadow.camera.bottom=-100;scene.add(sun);
+const mat=(color,roughness=.85,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
+const materials={grass:mat(0x56a84e),grass2:mat(0x6fbd59),sand:mat(0xe8d095),rock:mat(0x777e82),wood:mat(0x86532e),woodLight:mat(0xb67a43),leaf:mat(0x2f7b42),leaf2:mat(0x42964a),water: new THREE.MeshStandardMaterial({color:0x087fbc,roughness:.27,metalness:.12,transparent:true,opacity:.91}),white:mat(0xf3f0dc),red:mat(0xb93e3b),dark:mat(0x263341),skin:mat(0xffc18b),gold:mat(0xffca58,.4,.35),enemy:mat(0x55364f)};
+const oceanGeo=new THREE.PlaneGeometry(700,700,100,100);const pos=oceanGeo.attributes.position;
+for(let i=0;i<pos.count;i++){pos.setZ(i,Math.sin(pos.getX(i)*.11)*.16+Math.cos(pos.getY(i)*.08)*.12)}
+oceanGeo.computeVertexNormals();const ocean=new THREE.Mesh(oceanGeo,materials.water);ocean.rotation.x=-Math.PI/2;ocean.position.y=-1.6;scene.add(ocean);
+const world={islands:[],objects:[],enemies:[],npcs:[],treasures:[],portals:[],ships:[]};
+function addMesh(geo,material,x,y,z,parent=scene,cast=true){const m=new THREE.Mesh(geo,material);m.position.set(x,y,z);m.castShadow=cast;m.receiveShadow=true;parent.add(m);return m}
+function cylinder(rt,rb,h,material,x,y,z,parent=scene,seg=8){return addMesh(new THREE.CylinderGeometry(rt,rb,h,seg),material,x,y,z,parent)}
+function box(w,h,d,material,x,y,z,parent=scene){return addMesh(new THREE.BoxGeometry(w,h,d),material,x,y,z,parent)}
+function sphere(r,material,x,y,z,parent=scene,seg=10){return addMesh(new THREE.SphereGeometry(r,seg,8),material,x,y,z,parent)}
+function island(x,z,r,name,style=0){
+ const base=addMesh(new THREE.CylinderGeometry(r*.78,r*1.03,5,18),materials.rock,x,-2.5,z);base.scale.z=.9;
+ const land=addMesh(new THREE.CylinderGeometry(r*.88,r*.94,1.3,22),style===1?materials.grass2:materials.grass,x,.05,z);land.scale.z=.88;
+ const beach=addMesh(new THREE.CylinderGeometry(r*.98,r*1.0,.6,22),materials.sand,x,-.1,z);beach.scale.z=.9;
+ world.islands.push({x,z,r,name});
+ // hills, trees, rocks scattered deterministically
+ for(let i=0;i<Math.floor(r*.75);i++){
+  const a=i*2.399,dist=r*(.12+((i*37)%71)/100);
+  const tx=x+Math.cos(a)*dist,tz=z+Math.sin(a)*dist*.86;
+  if(i%4===0){const hill=addMesh(new THREE.ConeGeometry(3+((i*7)%5),5+((i*11)%6),7),style===2?materials.rock:materials.grass2,tx,2.5,tz);hill.rotation.z=.12*Math.sin(i)}
+  else if(i%5===0){sphere(1.5+((i*3)%2),materials.rock,tx,.7,tz)}
+  else tree(tx,tz,1+((i*13)%10)/12,style);
+ }
+ return {x,z,r,name};
+}
+function tree(x,z,s=1,style=0){
+ cylinder(.23*s,.35*s,2.3*s,materials.wood,x,1.1*s,z);
+ const leafmat=style===2?materials.leaf2:(Math.sin(x+z)>0?materials.leaf:materials.leaf2);
+ const crown=sphere(1.05*s,leafmat,x,2.5*s,z,scene,8);crown.scale.y=1.18;
+ if(style===1){sphere(.85*s,materials.gold,x+.4*s,2.7*s,z+.3*s,scene,8)}
+}
+function building(x,z,s=1,color=0xf0d7a2){
+ const g=new THREE.Group();scene.add(g);g.position.set(x,0,z);
+ box(4*s,3*s,4*s,mat(color),0,1.5*s,0,g);const roof=addMesh(new THREE.ConeGeometry(3.2*s,2*s,4),materials.red,0,4*s,0,g);roof.rotation.y=Math.PI/4;
+ box(.9*s,1.6*s,.12*s,materials.woodLight,0,.8*s,2.05*s,g);
+ for(let k=-1;k<=1;k+=2)box(.65*s,.7*s,.12*s,materials.dark,k*1.2*s,2*s,2.05*s,g);
+}
+function makeShip(x,z,scale=1){
+ const g=new THREE.Group();scene.add(g);g.position.set(x,0,z);g.scale.setScalar(scale);
+ const hull=addMesh(new THREE.CylinderGeometry(.7,2.0,8,8),materials.wood,0,0,0,g);hull.rotation.z=Math.PI/2;hull.scale.set(1,.55,1);
+ box(5,.45,2.2,materials.woodLight,0,.1,0,g);cylinder(.12,.16,5,materials.wood,0,2.5,0,g);
+ const sail=box(2.6,2.7,.12,materials.white,.05,3.3,0,g);sail.rotation.y=.15;
+ const mark=sphere(.42,materials.dark,.1,3.3,.09,g);mark.scale.set(1,.8,.2);
+ box(.7,.6,1.3,materials.woodLight,-2.1,.5,0,g);
+ world.ships.push({group:g,x,z,phase:Math.random()*6});
+ return g;
+}
+// A broad archipelago laid out for long-distance exploration.
+island(0,0,29,'Windward Coast',0);
+island(72,-24,21,'Palm Haven',1);
+island(-76,-56,24,'Skullrock Isle',2);
+island(34,88,25,'Coral Crown',1);
+island(-100,76,20,'Frostbite Bay',2);
+island(135,75,27,'Stormwatch',0);
+island(-10,-135,30,'Golden Sands',1);
+island(185,-75,22,'Whispering Key',2);
+// Harbor town
+for(let i=0;i<12;i++){const a=i*Math.PI/6;building(Math.cos(a)*13,Math.sin(a)*12,.65+(i%3)*.12,[0xf0d7a2,0xd9c18d,0x91c8c9][i%3])}
+for(let i=0;i<14;i++){const a=i*2.4;tree(Math.cos(a)*21,Math.sin(a)*19,1.05+(i%3)*.2,0)}
+// Other settlements and points of interest
+for(const [x,z] of [[72,-24],[34,88],[-10,-135],[135,75],[-100,76]])for(let i=0;i<5;i++)building(x+Math.cos(i*1.25)*7,z+Math.sin(i*1.25)*7,.48+(i%2)*.12,0xe7c990);
+makeShip(8,30,1.15);makeShip(-18,32,.8);makeShip(67,-2,.8);makeShip(-65,-24,1.05);makeShip(35,116,1.1);
+function makeChest(x,z){
+ const g=new THREE.Group();scene.add(g);g.position.set(x,.2,z);
+ box(1.4,.8,1,materials.wood,0,.4,0,g);box(1.46,.16,1.04,materials.gold,0,.82,0,g);box(.18,.3,1.08,materials.gold,0,.45,0,g);
+ const glow=new THREE.PointLight(0xffcb4d,1.2,6);glow.position.y=1.4;g.add(glow);
+ world.treasures.push({group:g,x,z,opened:false});return g;
+}
+makeChest(22,-5);makeChest(-13,15);makeChest(76,-30);makeChest(-80,-54);makeChest(42,94);makeChest(-5,-145);makeChest(141,81);makeChest(190,-79);
+function makeNPC(x,z,name,role,color,dialogue){
+ const g=new THREE.Group();scene.add(g);g.position.set(x,0,z);
+ cylinder(.38,.45,1.1,mat(color),0,.9,0,g);sphere(.36,materials.skin,0,1.65,0,g);sphere(.39,mat(color),0,1.92,-.02,g);
+ cylinder(.04,.04,.6,materials.dark,0,.9,.42,g);
+ const marker=sphere(.14,materials.gold,0,2.5,0,g);marker.userData.float=true;
+ world.npcs.push({group:g,x,z,name,role,dialogue,marker});return g;
+}
+makeNPC(4,8,'Captain Mira','Quest Giver',0x2465a8,'The sea is full of mysteries. Defeat 3 bandits and bring back treasure to prove yourself. There are islands in every direction!');
+makeNPC(-8,6,'Quartermaster Finn','Merchant',0x8c4b2d,'I trade useful supplies. Potions restore health; better gear comes from brave adventures.');
+makeNPC(11,18,'Navigator Sora','Navigator',0x278b83,'Sail to Palm Haven, Skullrock Isle, and Coral Crown. Each island has its own dangers and hidden treasure.');
+function makeEnemy(x,z,type='Bandit',level=1){
+ const g=new THREE.Group();scene.add(g);g.position.set(x,0,z);
+ cylinder(.4,.48,1.1,materials.enemy,0,.9,0,g);sphere(.36,materials.skin,0,1.65,0,g);sphere(.39,materials.dark,0,1.92,0,g);
+ box(.12,.9,.12,materials.woodLight,.52,1.0,0,g);box(.12,.5,.12,materials.dark,.52,1.55,0,g);
+ const ring=addMesh(new THREE.TorusGeometry(.55,.05,5,12),materials.red,0,.1,0,g);ring.rotation.x=Math.PI/2;
+ world.enemies.push({group:g,x,z,type,level,hp:35+level*12,maxHp:35+level*12,alive:true,attackCD:0,respawn:0});
+}
+for(const [x,z,l] of [[-22,-8,1],[-25,4,1],[-19,20,1],[67,-28,2],[78,-19,2],[-80,-60,3],[-69,-49,3],[35,92,3],[27,83,3],[139,77,4],[130,68,4],[-10,-141,4],[-1,-128,4],[188,-80,5],[180,-67,5]])makeEnemy(x,z,'Bandit',l);
+// Player model: stylized original pirate avatar.
+const player=new THREE.Group();scene.add(player);
+const body=cylinder(.42,.5,1.05,materials.red,0,1.0,0,player);
+const head=sphere(.36,materials.skin,0,1.75,0,player);sphere(.39,materials.gold,0,2.02,-.03,player).scale.set(1,.35,1);
+box(.8,.13,.65,materials.gold,0,1.98,0,player);
+box(.23,.8,.25,materials.dark,-.22,.38,0,player);box(.23,.8,.25,materials.dark,.22,.38,0,player);
+box(.17,.65,.2,materials.skin,-.5,1.05,0,player);box(.17,.65,.2,materials.skin,.5,1.05,0,player);
+const sword=box(.12,.9,.12,materials.gold,.68,1.05,.1,player);sword.rotation.z=-.55;
+player.position.set(0,0,7);
+const state={hp:100,maxHp:100,stamina:100,maxStamina:100,xp:0,nextXp:100,level:1,coins:120,bounty:0,kills:0,treasures:0,potions:2,questStage:0,questKills:0,inventory:['Rusty Cutlass','Traveler Coat','Health Potion ×2'],weapon:'Rusty Cutlass',attackCD:0,skillCD:0,invincible:0};
+let yaw=0,pitch=.25,velocityY=0,onGround=true,modalOpen=false,nearTarget=null,mouseDown=false,worldTime=0,weatherIndex=0;
+const keys={};const mobile={forward:false,back:false,left:false,right:false,sprint:false,jump:false};
+function toast(s){$('toast').textContent=s;$('toast').style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>$('toast').style.display='none',2200)}
+function log(s){$('log').textContent=s}
+function updateHUD(){
+ $('playerName').textContent=`Rookie Pirate · Lv ${state.level}`;$('coins').textContent=`฿ ${state.coins.toLocaleString()}`;
+ $('hpText').textContent=`${Math.ceil(state.hp)} / ${state.maxHp}`;$('hp').style.width=`${100*state.hp/state.maxHp}%`;
+ $('stamText').textContent=`${Math.ceil(state.stamina)} / ${state.maxStamina}`;$('stam').style.width=`${100*state.stamina/state.maxStamina}%`;
+ $('xpText').textContent=`${state.xp} / ${state.nextXp}`;$('xp').style.width=`${100*state.xp/state.nextXp}%`;$('bounty').textContent=`฿ ${state.bounty.toLocaleString()}`;
+ let q=state.questStage===0?'Find Captain Mira at the harbor and talk to her.':state.questStage===1?`Defeat bandits: ${state.questKills}/3 and find a treasure chest.`:state.questStage===2?'Return to Captain Mira to claim your reward.':'Main quest complete! Explore the Grand Seas and build your legend.';
+ $('questText').innerHTML=`<b>${state.questStage>=3?'THE FIRST LEGEND':'The Harbor Challenge'}</b><br>${q}<br><br><span style="color:#ffd166">Optional:</span> explore the islands and open glowing chests.`;
+}
+function gainXP(n){state.xp+=n;while(state.xp>=state.nextXp){state.xp-=state.nextXp;state.level++;state.nextXp=Math.floor(state.nextXp*1.45);state.maxHp+=15;state.hp=state.maxHp;state.maxStamina+=8;state.stamina=state.maxStamina;state.coins+=50;toast(`LEVEL UP! You are now level ${state.level}`)}updateHUD()}
+function showModal(title,html){$('modalTitle').textContent=title;$('modalContent').innerHTML=html;$('modal').style.display='flex';modalOpen=true;document.exitPointerLock?.()}
+function closeModal(){$('modal').style.display='none';modalOpen=false}
+$('closeModal').onclick=closeModal;
+function openInventory(){showModal('🎒 Inventory & Character',`<div class="grid">
+<div class="item"><b>⚔ Equipment</b><p>${state.weapon}</p><small>Attack power: ${10+state.level*2}</small></div>
+<div class="item"><b>❤️ Health Potions</b><p>${state.potions} in bag</p><button id="usePotion">USE POTION</button></div>
+<div class="item"><b>💰 Treasure</b><p>${state.coins} coins</p><small>Found chests: ${state.treasures}</small></div>
+<div class="item"><b>🏴‍☠️ Pirate Record</b><p>Level ${state.level}</p><small>Bandits defeated: ${state.kills}<br>Bounty: ${state.bounty}</small></div>
+</div><p>Keep exploring to find stronger enemies, treasure, and new islands.</p>`);
+setTimeout(()=>{const b=$('usePotion');if(b)b.onclick=()=>{if(state.potions>0&&state.hp<state.maxHp){state.potions--;state.hp=Math.min(state.maxHp,state.hp+45);updateHUD();toast('Health restored!');openInventory()}else toast(state.potions<=0?'No potions left!':'Health is already full.') }},0)}
+function openMap(){showModal('🧭 Grand Seas Map',`<p>Eight islands have been charted. Travel by foot along the beaches and use the small boats as landmarks.</p><div class="grid">${world.islands.map((i,n)=>`<div class="item"><b>${n+1}. ${i.name}</b><br><small>Coordinates ${Math.round(i.x)}, ${Math.round(i.z)}</small></div>`).join('')}</div><p><b>Current region:</b> ${$('region').textContent}</p><button id="mapHome">RETURN TO HARBOR</button>`);setTimeout(()=>{const b=$('mapHome');if(b)b.onclick=()=>{player.position.set(0,0,7);yaw=0;closeModal();toast('Returned to Windward Coast.')}},0)}
+function interact(){
+ if(!nearTarget){toast('Nothing nearby to interact with.');return}
+ if(nearTarget.kind==='npc'){
+  const n=nearTarget.obj;
+  if(n.role==='Quest Giver'){
+   if(state.questStage===0){state.questStage=1;toast('Quest accepted: The Harbor Challenge');log('Captain Mira: Defeat 3 bandits and discover a treasure chest.')}
+   else if(state.questStage===1)toast(`Captain Mira: ${state.questKills}/3 bandits defeated. Find treasure too!`);
+   else if(state.questStage===2){state.questStage=3;state.coins+=350;state.bounty+=500;gainXP(120);toast('QUEST COMPLETE! +350 coins, +500 bounty, +120 XP');}
+   else toast('Captain Mira: The seas are yours to explore, captain!');
+  }else if(n.role==='Merchant'){
+   showModal('⚓ Quartermaster Finn',`<p>Stock up before heading into dangerous waters.</p><div class="grid"><div class="item"><b>Health Potion</b><p>Restores 45 HP</p><b>฿ 40</b><br><button id="buyPotion">BUY</button></div><div class="item"><b>Fine Cutlass</b><p>More powerful attacks</p><b>฿ 180</b><br><button id="buySword">BUY</button></div></div>`);
+   setTimeout(()=>{const p=$('buyPotion');if(p)p.onclick=()=>{if(state.coins>=40){state.coins-=40;state.potions++;updateHUD();toast('Potion purchased!');closeModal()}else toast('Not enough coins.')};const s=$('buySword');if(s)s.onclick=()=>{if(state.coins>=180){state.coins-=180;state.weapon='Fine Cutlass';updateHUD();toast('Fine Cutlass equipped!');closeModal()}else toast('Not enough coins.') }},0);
+  }else toast(n.dialogue);
+ }else if(nearTarget.kind==='chest'){
+  const c=nearTarget.obj;if(c.opened){toast('This chest is empty.');return}
+  c.opened=true;c.group.children.forEach(ch=>{if(ch.material===materials.gold)ch.material=materials.wood});
+  const coins=45+Math.floor(Math.random()*90);state.coins+=coins;state.treasures++;state.bounty+=25;gainXP(35);
+  if(Math.random()<.55)state.potions++;
+  toast(`TREASURE FOUND! +${coins} coins and XP`);log('You found treasure. The sea rewards the curious.');
+  if(state.questStage===1&&state.treasures>0){state.questStage=state.questKills>=3?2:1;if(state.questKills>=3)toast('Quest objective complete! Return to Captain Mira.')}
+ }else if(nearTarget.kind==='ship'){toast('Your ship is ready to sail. This prototype lets you explore on foot; ship sailing is coming in a future build.')}
+ updateHUD();
+}
+function attack(){
+ if(state.attackCD>0||modalOpen)return;state.attackCD=.55;
+ const facing=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+ let target=null,best=3.4;
+ for(const e of world.enemies){if(!e.alive)continue;const dx=e.x-player.position.x,dz=e.z-player.position.z,d=Math.hypot(dx,dz);if(d<best&&((dx*facing.x+dz*facing.z)/Math.max(d,.001))>-.1){target=e;best=d}}
+ // quick slash visual
+ sword.rotation.x=-.7;sword.rotation.z=-1.2;setTimeout(()=>{sword.rotation.x=0;sword.rotation.z=-.55},170);
+ if(target){target.hp-=10+state.level*2+(state.weapon==='Fine Cutlass'?10:0);toast(`HIT! ${Math.max(0,target.hp)} HP left`);log(`${target.type} took damage.`);
+  if(target.hp<=0){target.alive=false;target.group.visible=false;state.kills++;state.coins+=18+target.level*4;state.bounty+=35*target.level;gainXP(25+target.level*8);if(state.questStage===1){state.questKills++;if(state.questKills>=3&&state.treasures>0){state.questStage=2;toast('Quest objectives complete! Return to Captain Mira.')}}updateHUD();toast(`BANDIT DEFEATED! +${18+target.level*4} coins`)}
+ }else{log('Your cutlass slices through the air. Get closer to an enemy.')}
+}
+function skill(){if(state.skillCD>0){toast('Special skill is recharging.');return}state.skillCD=5;state.stamina=Math.max(0,state.stamina-20);
+ const p=player.position;let hit=0;
+ for(const e of world.enemies){if(!e.alive)continue;if(Math.hypot(e.x-p.x,e.z-p.z)<7){e.hp-=38+state.level*3;hit++;if(e.hp<=0){e.alive=false;e.group.visible=false;state.kills++;state.coins+=25;state.bounty+=50;gainXP(35)}}}
+ const ring=addMesh(new THREE.TorusGeometry(3.8,.18,8,40),materials.gold,p.x,.4,p.z);ring.rotation.x=Math.PI/2;let t=0;
+ const anim=()=>{t++;ring.scale.setScalar(1+t*.07);ring.material=ring.material.clone();ring.material.transparent=true;ring.material.opacity=Math.max(0,1-t/18);if(t<18)requestAnimationFrame(anim);else scene.remove(ring)};anim();
+ toast(hit?`WHIRLWIND SLASH! Hit ${hit} enemies`:'WHIRLWIND SLASH!');updateHUD();
+}
+function findNear(){
+ nearTarget=null;let best=4.2;
+ for(const n of world.npcs){const d=Math.hypot(n.x-player.position.x,n.z-player.position.z);if(d<best){best=d;nearTarget={kind:'npc',obj:n};}}
+ for(const c of world.treasures){if(c.opened)continue;const d=Math.hypot(c.x-player.position.x,c.z-player.position.z);if(d<best){best=d;nearTarget={kind:'chest',obj:c};}}
+ for(const s of world.ships){const d=Math.hypot(s.x-player.position.x,s.z-player.position.z);if(d<best){best=d;nearTarget={kind:'ship',obj:s};}}
+ if(nearTarget){$('hint').textContent=nearTarget.kind==='npc'?`E — Talk to ${nearTarget.obj.name}`:nearTarget.kind==='chest'?'E — Open treasure chest':'E — Inspect ship'}
+ else $('hint').textContent='Explore the islands. Find people, enemies, and glowing treasure.';
+}
+function takeDamage(n){if(state.invincible>0)return;state.hp-=n;state.invincible=1.1;toast(`-${n} HEALTH`);if(state.hp<=0){state.hp=state.maxHp;state.coins=Math.max(0,state.coins-30);player.position.set(0,0,7);toast('You were rescued and returned to the harbor. -30 coins')}updateHUD()}
+const clock=new THREE.Clock();
+function animate(){
+ requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04);worldTime+=dt;
+ // animated sea
+ const pp=ocean.geometry.attributes.position;for(let i=0;i<pp.count;i++){const x=pp.getX(i),y=pp.getY(i);pp.setZ(i,Math.sin(x*.11+worldTime*1.2)*.18+Math.cos(y*.08+worldTime)*.13)}pp.needsUpdate=true;ocean.geometry.computeVertexNormals();
+ // camera-relative movement
+ const forward=(keys.KeyW||keys.ArrowUp||mobile.forward?1:0)-(keys.KeyS||keys.ArrowDown||mobile.back?1:0);
+ const strafe=(keys.KeyD||keys.ArrowRight||mobile.right?1:0)-(keys.KeyA||keys.ArrowLeft||mobile.left?1:0);
+ const sprint=keys.ShiftLeft||keys.ShiftRight||mobile.sprint;
+ const moving=forward!==0||strafe!==0;
+ if(!modalOpen){
+  if(moving){const speed=sprint&&state.stamina>0?12:7;const dx=(Math.sin(yaw)*forward+Math.cos(yaw)*strafe)*speed*dt;const dz=(Math.cos(yaw)*forward-Math.sin(yaw)*strafe)*speed*dt;player.position.x+=dx;player.position.z+=dz;if(sprint)state.stamina=Math.max(0,state.stamina-22*dt);else state.stamina=Math.min(state.maxStamina,state.stamina+12*dt);player.rotation.y=Math.atan2(dx,dz)}
+  else state.stamina=Math.min(state.maxStamina,state.stamina+18*dt);
+  if((keys.Space||mobile.jump)&&onGround){velocityY=8.5;onGround=false;keys.Space=false;mobile.jump=false}
+  velocityY-=22*dt;player.position.y+=velocityY*dt;if(player.position.y<=0){player.position.y=0;velocityY=0;onGround=true}
+  // Land friction keeps the player on islands, ocean is traversable as a stylized adventure.
+  state.attackCD=Math.max(0,state.attackCD-dt);state.skillCD=Math.max(0,state.skillCD-dt);state.invincible=Math.max(0,state.invincible-dt);
+  for(const e of world.enemies){if(!e.alive)continue;const dx=player.position.x-e.x,dz=player.position.z-e.z,d=Math.hypot(dx,dz);e.attackCD-=dt;
+   if(d<17){const angle=Math.atan2(dx,dz);e.group.rotation.y=angle;if(d>1.8){e.x+=dx/d*dt*(1.3+e.level*.12);e.z+=dz/d*dt*(1.3+e.level*.12);e.group.position.x=e.x;e.group.position.z=e.z}else if(e.attackCD<=0){e.attackCD=1.45;takeDamage(5+e.level*2)}}
+  }
+  for(const n of world.npcs){if(n.marker){n.marker.position.y=2.5+Math.sin(worldTime*2+n.x)*.12}}
+  world.ships.forEach(s=>{s.group.position.y=Math.sin(worldTime*1.3+s.phase)*.25;s.group.rotation.y=Math.sin(worldTime*.2+s.phase)*.05});
+  // camera follow
+  const target=new THREE.Vector3(player.position.x,player.position.y+1.3,player.position.z);
+  const desired=new THREE.Vector3(player.position.x-Math.sin(yaw)*10,player.position.y+5.0+pitch*5,player.position.z-Math.cos(yaw)*10);
+  camera.position.lerp(desired,1-Math.pow(.001,dt));camera.lookAt(target);
+ }
+ findNear();
+ // region and time-of-day tint
+ let nearest=world.islands[0],nd=Infinity;for(const i of world.islands){const d=Math.hypot(i.x-player.position.x,i.z-player.position.z);if(d<nd){nd=d;nearest=i}}
+ $('region').textContent=nd<nearest.r+14?nearest.name:'Open Ocean';
+ const cycle=(Math.sin(worldTime*.025)+1)/2;sun.intensity=.9+cycle*2.1;scene.background.setRGB(.08+.35*cycle,.25+.55*cycle,.42+.5*cycle);
+ if(Math.floor(worldTime/70)%2===1){$('weather').textContent='Sea mist';scene.fog.near=55;scene.fog.far=230}else{$('weather').textContent='Clear skies';scene.fog.near=90;scene.fog.far=320}
+ if(Math.floor(worldTime/110)%2===1){$('weather').textContent='Golden hour'}
+ if(Math.floor(worldTime)%1===0&&Math.floor(worldTime)!==animate.lastHUD){animate.lastHUD=Math.floor(worldTime);updateHUD()}
+ renderer.render(scene,camera);
+}
+animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.8))});
+addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.repeat)return;
+ if(e.code==='KeyE')interact();if(e.code==='KeyJ')attack();if(e.code==='KeyQ')skill();if(e.code==='KeyI')openInventory();if(e.code==='KeyM')openMap();if(e.code==='Escape')closeModal();
+});
+addEventListener('keyup',e=>{keys[e.code]=false});
+renderer.domElement.addEventListener('click',()=>{if(!modalOpen&&document.pointerLockElement!==renderer.domElement&&matchMedia('(pointer:fine)').matches)renderer.domElement.requestPointerLock?.()});
+addEventListener('mousemove',e=>{if(document.pointerLockElement===renderer.domElement&&!modalOpen){yaw-=e.movementX*.0022;pitch=Math.max(-.1,Math.min(.8,pitch-e.movementY*.0015))}});
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+$('attackBtn').onclick=attack;$('skillBtn').onclick=skill;$('interactBtn').onclick=interact;$('mapBtn').onclick=openMap;$('invBtn').onclick=openInventory;
+document.querySelectorAll('[data-move]').forEach(b=>{const k=b.dataset.move;const start=e=>{e.preventDefault();mobile[k]=true};const end=e=>{e.preventDefault();mobile[k]=false};b.addEventListener('pointerdown',start);b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);b.addEventListener('pointerleave',end)});
+$('turnLeft').onpointerdown=()=>yaw+=.24;$('turnRight').onpointerdown=()=>yaw-=.24;
+let touchX=null,touchY=null;
+renderer.domElement.addEventListener('touchstart',e=>{if(e.touches.length===1){touchX=e.touches[0].clientX;touchY=e.touches[0].clientY}},{passive:true});
+renderer.domElement.addEventListener('touchmove',e=>{if(e.touches.length===1&&touchX!==null&&!modalOpen){const t=e.touches[0];const dx=t.clientX-touchX,dy=t.clientY-touchY;if(Math.abs(dx)+Math.abs(dy)>4){yaw-=dx*.006;pitch=Math.max(-.1,Math.min(.8,pitch-dy*.003));touchX=t.clientX;touchY=t.clientY}}},{passive:true});
+renderer.domElement.addEventListener('touchend',()=>{touchX=null;touchY=null});
+updateHUD();toast('Welcome to Grand Seas 3D! Talk to Captain Mira to start.');
+</script>
+</body></html>
